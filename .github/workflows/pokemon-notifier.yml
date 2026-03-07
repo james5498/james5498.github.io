@@ -1,0 +1,46 @@
+name: Pokemon Release Notifier
+
+on:
+  schedule:
+    # 9:00 AM UTC every day
+    - cron: "0 9 * * *"
+    # 12:00 PM UTC every day
+    - cron: "0 12 * * *"
+  workflow_dispatch: # Allow manual triggers for testing
+
+jobs:
+  check-releases:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Needed to commit updated seen.json
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r pokemon-notifier/requirements.txt
+
+      - name: Run notifier
+        env:
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER || 'smtp.gmail.com' }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
+        run: python pokemon-notifier/notifier.py
+
+      - name: Commit updated seen list
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pokemon-notifier/seen.json
+          git diff --cached --quiet || git commit -m "Update seen Pokemon announcements"
+          git push
