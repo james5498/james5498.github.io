@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Itinerary Planner</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Welcome to Travel Planner</h2>
+                <p>Enter your Anthropic API key to get started. Your key is stored only in your browser's local storage and never sent anywhere except directly to the Anthropic API.</p>
+            </div>
+            <div class="modal-body">
+                <label for="api-key-input">Anthropic API Key</label>
+                <div class="input-with-toggle">
+                    <input type="password" id="api-key-input" placeholder="sk-ant-..." autocomplete="off">
+                    <button type="button" class="toggle-visibility" onclick="toggleKeyVisibility()">Show</button>
+                </div>
+                <label for="model-select">Model</label>
+                <select id="model-select">
+                    <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (Fast)</option>
+                    <option value="claude-opus-4-6">Claude Opus 4.6 (Best quality)</option>
+                </select>
+                <button id="save-settings-btn" class="btn btn-primary" onclick="saveSettings()">Save &amp; Continue</button>
+                <p class="hint">Need an API key? Get one at <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="hidden">
+        <!-- Header -->
+        <header>
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">&#9992;</span>
+                    <h1>Travel Itinerary Planner</h1>
+                </div>
+                <button class="btn btn-ghost" onclick="openSettings()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                    Settings
+                </button>
+            </div>
+        </header>
+
+        <!-- Trip Planning Form -->
+        <section id="planning-section" class="section">
+            <div class="container">
+                <div class="form-header">
+                    <h2>Plan Your Trip</h2>
+                    <p>Tell us where you want to go and we'll craft the perfect itinerary.</p>
+                </div>
+                <form id="trip-form" onsubmit="handleTripSubmit(event)">
+                    <div class="form-grid">
+                        <div class="form-group span-2">
+                            <label for="destinations">Destinations</label>
+                            <input type="text" id="destinations" placeholder="e.g., Tokyo, Kyoto, Osaka" required>
+                            <span class="form-hint">Enter cities and/or countries, separated by commas</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="start-date">Start Date</label>
+                            <input type="date" id="start-date">
+                        </div>
+                        <div class="form-group">
+                            <label for="end-date">End Date</label>
+                            <input type="date" id="end-date">
+                        </div>
+                        <div class="form-group">
+                            <label for="trip-days">Number of Days</label>
+                            <input type="number" id="trip-days" min="1" max="60" placeholder="e.g., 10">
+                            <span class="form-hint">Used if dates are not specified</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="travelers">Number of Travelers</label>
+                            <input type="number" id="travelers" min="1" max="20" value="2">
+                        </div>
+                        <div class="form-group">
+                            <label for="departure-city">Departing From</label>
+                            <input type="text" id="departure-city" placeholder="e.g., New York, JFK">
+                        </div>
+                        <div class="form-group">
+                            <label for="budget">Budget Level</label>
+                            <select id="budget">
+                                <option value="luxury">Luxury</option>
+                                <option value="upper-mid" selected>Upper Midrange</option>
+                                <option value="midrange">Midrange</option>
+                                <option value="budget">Budget-Friendly</option>
+                            </select>
+                        </div>
+                        <div class="form-group span-2">
+                            <label for="preferences">Interests &amp; Preferences</label>
+                            <textarea id="preferences" rows="3" placeholder="e.g., We love food tours, historical sites, and adventure activities. We prefer boutique hotels. My partner is vegetarian."></textarea>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary btn-lg" id="generate-btn">
+                            <span class="btn-text">Generate Itinerary</span>
+                            <span class="btn-loading hidden">
+                                <span class="spinner"></span>
+                                Generating...
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Search Status -->
+        <section id="search-status" class="section hidden">
+            <div class="container">
+                <div class="status-bar">
+                    <div class="status-icon">
+                        <span class="spinner-lg"></span>
+                    </div>
+                    <div class="status-text">
+                        <h3 id="status-title">Building your itinerary...</h3>
+                        <p id="status-detail">Searching for the best options</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Itinerary Display -->
+        <section id="itinerary-section" class="section hidden">
+            <div class="container">
+                <div class="itinerary-header">
+                    <h2 id="itinerary-title">Your Itinerary</h2>
+                    <div class="itinerary-actions">
+                        <button class="btn btn-ghost" onclick="exportMarkdown()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                            Export Markdown
+                        </button>
+                        <button class="btn btn-ghost" onclick="printItinerary()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                            Print
+                        </button>
+                        <button class="btn btn-secondary" onclick="startNewTrip()">New Trip</button>
+                    </div>
+                </div>
+                <div id="itinerary-content" class="itinerary-body"></div>
+            </div>
+        </section>
+
+        <!-- Chat Interface -->
+        <div id="chat-container" class="hidden">
+            <div class="chat-header" onclick="toggleChat()">
+                <span>Refine Your Itinerary</span>
+                <span id="chat-toggle-icon" class="chat-chevron">&#9650;</span>
+            </div>
+            <div id="chat-messages" class="chat-messages"></div>
+            <form id="chat-form" class="chat-input-area" onsubmit="handleChatSubmit(event)">
+                <input type="text" id="chat-input" placeholder='e.g., "Swap day 3 for a food tour" or "Find cheaper hotel options"' autocomplete="off">
+                <button type="submit" class="btn btn-primary" id="chat-send-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
